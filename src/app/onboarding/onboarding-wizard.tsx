@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   addChannelAction,
@@ -95,6 +95,15 @@ export function OnboardingWizard({
   const [channelReady, setChannelReady] = useState(channels.length > 0);
   const [whatsappReady, setWhatsappReady] = useState(Boolean(whatsappNumber));
 
+  useEffect(() => {
+    setStep(startingStep(company, channels, whatsappNumber));
+    setCompanyReady(Boolean(company?.name));
+    setChannelReady(channels.length > 0);
+    setWhatsappReady(Boolean(whatsappNumber));
+  }, [company, channels, whatsappNumber]);
+
+  const resumeFrom = startingStep(company, channels, whatsappNumber);
+
   const selectedPlatform = availablePlatforms.includes(platform)
     ? platform
     : (availablePlatforms[0] ?? "playstore");
@@ -131,14 +140,20 @@ export function OnboardingWizard({
 
   return (
     <div className="flex flex-col gap-6">
+      {resumeFrom > 0 ? (
+        <p className="rounded-xl border border-[#22D3EE]/30 bg-[#E8F9FD] px-4 py-3 text-sm text-[#0B3A4A]">
+          Continuando de onde você parou — passo {resumeFrom + 1} de {STEPS.length} (
+          {STEPS[resumeFrom]}).
+        </p>
+      ) : null}
       <ol className="grid grid-cols-4 gap-2 text-center text-xs font-medium">
         {STEPS.map((label, index) => (
           <li
             key={label}
             className={
               index === step
-                ? "rounded-full bg-zinc-950 px-2 py-1 text-white"
-                : "rounded-full bg-zinc-100 px-2 py-1 text-zinc-500"
+                ? "rounded-full bg-[#2547A8] px-2 py-1 text-white"
+                : "rounded-full bg-[#EEF2F8] px-2 py-1 text-[#5B657A]"
             }
           >
             {index + 1}. {label}
@@ -328,7 +343,7 @@ export function OnboardingWizard({
                 type="button"
                 onClick={() => setCycle(item)}
                 className={`rounded-full px-3 py-1 ${
-                  cycle === item ? "bg-zinc-950 text-white" : "text-zinc-500"
+                  cycle === item ? "bg-[#2547A8] text-white" : "text-[#5B657A]"
                 }`}
               >
                 {item === "quarterly" ? "Trimestral — desconto" : "Mensal"}
@@ -343,7 +358,7 @@ export function OnboardingWizard({
                 onClick={() => setPlan(item.id)}
                 className={`rounded-xl border p-4 text-left ${
                   plan === item.id
-                    ? "border-zinc-950 ring-2 ring-zinc-950"
+                    ? "border-[#2547A8] ring-2 ring-[#2547A8]/25"
                     : "border-border"
                 }`}
               >

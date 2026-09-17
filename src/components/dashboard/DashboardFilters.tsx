@@ -86,7 +86,7 @@ export function DashboardFilters({
   }
 
   return (
-    <section className="grid gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10 md:grid-cols-3">
+    <section className="grid gap-4 rounded-2xl border border-border/70 bg-card p-4 md:grid-cols-3">
       <div className="grid gap-2">
         <Label htmlFor="platform-filter">Plataforma</Label>
         <Select

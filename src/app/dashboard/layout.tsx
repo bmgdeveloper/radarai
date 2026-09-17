@@ -10,9 +10,9 @@ export default async function DashboardLayout({
   if (channelCount < 1) redirect("/onboarding");
 
   return (
-    <div className="flex min-h-svh flex-col bg-muted/40 md:h-svh md:flex-row md:overflow-hidden">
+    <div className="flex min-h-svh flex-col bg-background md:h-svh md:flex-row md:overflow-hidden">
       <Sidebar company={company} />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto bg-background">
         <RenewalBanner company={company} />
         {children}
       </div>

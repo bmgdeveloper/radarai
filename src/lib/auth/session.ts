@@ -112,8 +112,10 @@ export async function requireCompany(): Promise<
 
 export function needsOnboarding(context: AuthContext | null) {
   if (!context?.user) return true;
+  // Sem empresa ou sem canal: configuração incompleta — login deve retomar /onboarding.
   if (!context.company) return true;
   if (context.channelCount < 1) return true;
+  // Sem assinatura/trial ativa ainda precisa concluir o checkout.
   if (!context.company.is_active) return true;
   return false;
 }

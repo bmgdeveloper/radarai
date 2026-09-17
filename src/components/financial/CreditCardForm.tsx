@@ -233,7 +233,7 @@ export function CreditCardForm({
 
   return (
     <form className="grid gap-4" onSubmit={submit}>
-      <div className="rounded-xl bg-[#0B1F4A] px-4 py-3 text-sm font-medium leading-relaxed text-white">
+      <div className="rounded-2xl border border-[#22D3EE]/30 bg-[#0B0F19] px-4 py-3 text-sm font-medium leading-relaxed text-slate-100">
         {trialCopy}
       </div>
 

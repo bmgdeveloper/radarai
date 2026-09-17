@@ -47,7 +47,7 @@ export function ProfileForm({
 
   return (
     <div className="grid max-w-xl gap-8">
-      <form action={saveProfile} className="grid gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+      <form action={saveProfile} className="grid gap-4 rounded-2xl border border-border/70 bg-card p-4">
         <div className="grid gap-2">
           <Label htmlFor="name">Nome</Label>
           <Input id="name" name="name" required defaultValue={name} />
@@ -79,7 +79,7 @@ export function ProfileForm({
         </Button>
       </form>
 
-      <form action={savePassword} className="grid gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+      <form action={savePassword} className="grid gap-4 rounded-2xl border border-border/70 bg-card p-4">
         <p className="text-sm font-medium">Alterar senha</p>
         <div className="grid gap-2">
           <Label htmlFor="password">Nova senha</Label>

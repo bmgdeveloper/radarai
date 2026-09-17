@@ -1,11 +1,17 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { ensureUserCompany } from "@/lib/auth/ensure-company";
 import { getAuthContext, nextAppPath } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
 function appUrl() {
   return process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://127.0.0.1:3000";
+}
+
+function authCallbackUrl(next = "/onboarding") {
+  const path = next.startsWith("/") ? next : `/${next}`;
+  return `${appUrl()}/auth/callback?next=${encodeURIComponent(path)}`;
 }
 
 export async function loginAction(formData: FormData) {
@@ -27,13 +33,27 @@ export async function loginAction(formData: FormData) {
             "Seu cadastro ainda não foi ativado. Abra o e-mail que enviamos, clique no link de confirmação e tente entrar de novo.",
         };
       }
+      if (
+        raw.includes("invalid login") ||
+        raw.includes("invalid credentials") ||
+        raw.includes("invalid_credentials")
+      ) {
+        return { error: "E-mail ou senha incorretos." };
+      }
       return { error: error.message };
+    }
+
+    try {
+      await ensureUserCompany(supabase);
+    } catch {
+      // Onboarding cobre a criação da empresa se necessário.
     }
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Falha no login." };
   }
 
-  redirect(nextAppPath(await getAuthContext()));
+  const context = await getAuthContext().catch(() => null);
+  redirect(nextAppPath(context) || "/onboarding");
 }
 
 export async function signupAction(formData: FormData) {
@@ -58,6 +78,13 @@ export async function signupAction(formData: FormData) {
     };
   }
 
+  const params = new URLSearchParams();
+  if (plan) params.set("plan", plan);
+  if (cycle) params.set("cycle", cycle);
+  const onboardingPath = params.size
+    ? `/onboarding?${params.toString()}`
+    : "/onboarding";
+
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.signUp({
@@ -65,37 +92,46 @@ export async function signupAction(formData: FormData) {
       password,
       options: {
         data: { name, company_name: companyName },
-        emailRedirectTo: `${appUrl()}/onboarding`,
+        emailRedirectTo: authCallbackUrl(onboardingPath),
       },
     });
 
     if (error) return { error: error.message };
+
+    // Conta já existente: Supabase pode devolver user sem identities novas.
+    if (data.user && (data.user.identities?.length ?? 0) === 0) {
+      return {
+        error:
+          "Este e-mail já possui conta. Faça login para continuar a configuração de onde parou.",
+      };
+    }
+
     if (!data.session) {
       return {
         ok: true as const,
         needsEmailConfirmation: true as const,
         email,
         message:
-          "Enviamos um e-mail de ativação. Abra a mensagem, clique no link para confirmar o cadastro e depois faça login.",
+          "Enviamos um e-mail de ativação. Abra a mensagem, clique no link para confirmar o cadastro e depois faça login — você volta de onde parou no onboarding.",
       };
     }
 
-    const { error: companyError } = await supabase.rpc("create_company", {
-      p_name: companyName,
-      p_cnpj: null,
-    });
-    if (companyError && !companyError.message.includes("already belongs")) {
-      return { error: companyError.message };
+    try {
+      await ensureUserCompany(supabase);
+    } catch (companyError) {
+      const message =
+        companyError instanceof Error
+          ? companyError.message
+          : "Falha ao criar a empresa.";
+      if (!/already belongs/i.test(message)) {
+        return { error: message };
+      }
     }
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Falha no cadastro." };
   }
 
-  const params = new URLSearchParams();
-  if (plan) params.set("plan", plan);
-  if (cycle) params.set("cycle", cycle);
-  const next = params.size ? `/onboarding?${params.toString()}` : "/onboarding";
-  redirect(next);
+  redirect(onboardingPath);
 }
 
 export async function requestPasswordResetAction(formData: FormData) {
@@ -105,7 +141,7 @@ export async function requestPasswordResetAction(formData: FormData) {
   try {
     const supabase = await createClient();
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${appUrl()}/reset-password`,
+      redirectTo: authCallbackUrl("/reset-password"),
     });
     if (error) return { error: error.message };
     return { ok: true as const, message: "Se o e-mail existir, enviamos o link de redefinição." };
@@ -132,7 +168,8 @@ export async function updatePasswordAction(formData: FormData) {
     return { error: error instanceof Error ? error.message : "Falha ao atualizar a senha." };
   }
 
-  redirect("/dashboard");
+  const context = await getAuthContext().catch(() => null);
+  redirect(nextAppPath(context) || "/onboarding");
 }
 
 export async function logoutAction() {

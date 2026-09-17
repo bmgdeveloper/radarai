@@ -37,11 +37,11 @@ function NavLinks({
             onClick={onNavigate}
             className={
               active
-                ? "flex items-center gap-2 rounded-lg bg-[#22D3EE]/15 px-3 py-2 font-medium text-[#67E8F9]"
-                : "flex items-center gap-2 rounded-lg px-3 py-2 text-slate-300 hover:bg-white/5 hover:text-white"
+                ? "flex items-center gap-2 rounded-xl bg-white/8 px-3 py-2.5 font-medium text-[#67E8F9] ring-1 ring-[#22D3EE]/25"
+                : "flex items-center gap-2 rounded-xl px-3 py-2.5 text-slate-400 transition-colors hover:bg-white/5 hover:text-white"
             }
           >
-            <Icon className="size-4 shrink-0 opacity-80" />
+            <Icon className="size-4 shrink-0 opacity-90" />
             {link.label}
           </Link>
         );
@@ -52,25 +52,32 @@ function NavLinks({
 
 function Brand({ company }: { company: CompanyRecord }) {
   return (
-    <div className="border-b border-white/10 px-5 py-5">
-      <p className="text-[10px] font-semibold tracking-[0.2em] text-[#67E8F9] uppercase">
-        BMG Tech AI
-      </p>
-      <p className="mt-1 font-[family-name:var(--font-heading)] text-lg font-semibold">
-        Radar AI
-      </p>
-      <p className="mt-2 truncate text-xs text-slate-400">{company.name}</p>
+    <div className="border-b border-white/8 px-5 py-5">
+      <div className="flex items-center gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#22D3EE] to-[#2547A8] font-[family-name:var(--font-heading)] text-sm font-bold text-[#0B0F19]">
+          B
+        </span>
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold tracking-[0.18em] text-[#67E8F9] uppercase">
+            BMG Tech AI
+          </p>
+          <p className="font-[family-name:var(--font-heading)] text-base font-semibold text-white">
+            Radar AI
+          </p>
+        </div>
+      </div>
+      <p className="mt-3 truncate text-xs text-slate-500">{company.name}</p>
     </div>
   );
 }
 
 function LogoutForm() {
   return (
-    <form action={logoutAction} className="border-t border-white/10 p-3">
+    <form action={logoutAction} className="border-t border-white/8 p-3">
       <Button
         type="submit"
         variant="ghost"
-        className="w-full justify-start text-slate-300 hover:bg-white/5 hover:text-white"
+        className="w-full justify-start text-slate-400 hover:bg-white/5 hover:text-white"
       >
         Sair
       </Button>
@@ -84,12 +91,17 @@ export function Sidebar({ company }: { company: CompanyRecord }) {
 
   return (
     <>
-      <header className="flex items-center justify-between bg-[#0B0F19] px-4 py-3 text-slate-200 md:hidden">
-        <div className="min-w-0">
-          <p className="font-[family-name:var(--font-heading)] text-sm font-semibold">
-            Radar AI
-          </p>
-          <p className="truncate text-xs text-slate-400">{company.name}</p>
+      <header className="flex items-center justify-between border-b border-white/8 bg-[#0B0F19] px-4 py-3 text-slate-200 md:hidden">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#22D3EE] to-[#2547A8] text-xs font-bold text-[#0B0F19]">
+            B
+          </span>
+          <div className="min-w-0">
+            <p className="font-[family-name:var(--font-heading)] text-sm font-semibold text-white">
+              Radar AI
+            </p>
+            <p className="truncate text-xs text-slate-500">{company.name}</p>
+          </div>
         </div>
         <Button
           type="button"
@@ -131,7 +143,7 @@ export function Sidebar({ company }: { company: CompanyRecord }) {
         </div>
       ) : null}
 
-      <aside className="sticky top-0 hidden h-svh w-64 shrink-0 flex-col overflow-y-auto bg-[#0B0F19] text-slate-200 md:flex">
+      <aside className="sticky top-0 hidden h-svh w-64 shrink-0 flex-col overflow-y-auto border-r border-white/8 bg-[#0B0F19] text-slate-200 md:flex">
         <Brand company={company} />
         <NavLinks pathname={pathname} />
         <LogoutForm />

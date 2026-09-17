@@ -128,7 +128,7 @@ export function FeedbackTable({
 
   return (
     <>
-    <div className="rounded-xl bg-card ring-1 ring-foreground/10 overflow-hidden">
+    <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
         <Table>
           <TableHeader>
             <TableRow>

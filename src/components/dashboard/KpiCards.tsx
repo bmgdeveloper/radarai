@@ -69,7 +69,7 @@ export function KpiCards({ kpis }: { kpis: DashboardKpis }) {
                 <CardDescription>{card.title}</CardDescription>
                 <CardTitle className="mt-1 text-2xl">{values[card.key]}</CardTitle>
               </div>
-              <span className="rounded-lg bg-muted p-2 text-muted-foreground">
+              <span className="rounded-lg bg-[#E8F9FD] p-2 text-[#2547A8]">
                 <Icon className="size-4" />
               </span>
             </CardHeader>

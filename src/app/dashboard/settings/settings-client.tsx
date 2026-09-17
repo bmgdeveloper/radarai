@@ -108,7 +108,7 @@ export function SettingsClient({
             </a>
           </p>
         )}
-        <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+        <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
           <ul className="divide-y">
             {channels.length === 0 ? (
               <li className="p-4 text-sm text-muted-foreground">
@@ -164,7 +164,7 @@ export function SettingsClient({
         </div>
         {canAdd ? (
           <form
-            className="grid max-w-xl gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10"
+            className="grid max-w-xl gap-4 rounded-2xl border border-border/70 bg-card p-4"
             action={(formData) => run(() => addChannelAction(formData))}
           >
             <input type="hidden" name="platform" value={selectedPlatform} />
@@ -215,7 +215,7 @@ export function SettingsClient({
 
       <TabsContent value="alerts">
         <form
-          className="grid max-w-xl gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10"
+          className="grid max-w-xl gap-4 rounded-2xl border border-border/70 bg-card p-4"
           action={(formData) => run(() => saveWhatsAppAction(formData))}
         >
           <div className="grid gap-2">

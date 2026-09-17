@@ -101,7 +101,7 @@ export function FinancialClient({
 
   return (
     <div className="grid gap-6">
-      <section className="grid gap-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10 md:grid-cols-4">
+      <section className="grid gap-4 rounded-2xl border border-border/70 bg-card p-5 md:grid-cols-4">
         <div>
           <p className="text-xs text-muted-foreground">Plano atual</p>
           <p className="mt-1 text-lg font-semibold">{planLabel(tier)}</p>
@@ -131,8 +131,8 @@ export function FinancialClient({
       </section>
 
       {isTrial ? (
-        <section className="grid gap-3 rounded-xl bg-[#0B1F4A] p-5 text-white">
-          <p className="text-sm font-medium leading-relaxed">
+        <section className="grid gap-3 rounded-2xl border border-[#22D3EE]/25 bg-[#0B0F19] p-5 text-white">
+          <p className="text-sm font-medium leading-relaxed text-slate-200">
             Você está no teste grátis. A primeira cobrança de{" "}
             {formatPlanPrice(Number(subscription?.amount ?? 0))} acontece no 8º dia.
             Cancele antes disso sem custos.
@@ -140,7 +140,7 @@ export function FinancialClient({
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
-              variant="secondary"
+              className="bg-[#22D3EE] text-[#0B0F19] hover:bg-[#67E8F9]"
               disabled={cancelPending}
               onClick={cancelTrial}
             >
@@ -148,7 +148,7 @@ export function FinancialClient({
             </Button>
           </div>
           {cancelError ? (
-            <p className="text-sm text-red-200">{cancelError}</p>
+            <p className="text-sm text-red-300">{cancelError}</p>
           ) : null}
         </section>
       ) : (
@@ -162,7 +162,7 @@ export function FinancialClient({
         </div>
       )}
 
-      <section className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+      <section className="overflow-hidden rounded-2xl border border-border/70 bg-card">
         <div className="border-b px-4 py-3 text-sm font-medium">Histórico de faturas Pix</div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">

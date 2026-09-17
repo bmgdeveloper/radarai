@@ -55,7 +55,8 @@ export default async function OnboardingPage({
           Configure o monitoramento
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Quatro passos para começar a receber alertas no WhatsApp.
+          Quatro passos para começar a receber alertas no WhatsApp. Você pode sair e
+          voltar depois — o progresso fica salvo na sua conta.
         </p>
       </div>
       <OnboardingWizard
