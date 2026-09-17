@@ -33,11 +33,26 @@ export function CardCheckoutDialog({
 }) {
   const [tier, setTier] = useState<PlanTier>(defaultTier);
   const [cycle, setCycle] = useState<BillingCycle>(defaultCycle);
+  const [trialEligible, setTrialEligible] = useState(true);
 
   useEffect(() => {
     if (!open) return;
     setTier(defaultTier);
     setCycle(defaultCycle);
+    let cancelled = false;
+    fetch("/api/checkout/card")
+      .then(async (response) => {
+        const payload = (await response.json()) as { trialEligible?: boolean };
+        if (!cancelled && typeof payload.trialEligible === "boolean") {
+          setTrialEligible(payload.trialEligible);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTrialEligible(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [open, defaultTier, defaultCycle]);
 
   const amount = PLANS[tier].prices[cycle];
@@ -46,9 +61,13 @@ export function CardCheckoutDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto bg-white text-zinc-950 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>
+            {trialEligible ? title : "Assinar com cartão"}
+          </DialogTitle>
           <DialogDescription>
-            Cartão de crédito com 7 dias de teste grátis via Mercado Pago.
+            {trialEligible
+              ? "Cartão de crédito com 7 dias de teste grátis via Mercado Pago."
+              : "Este e-mail e empresa já usaram o teste grátis. A assinatura segue com cobrança do plano."}
           </DialogDescription>
         </DialogHeader>
 
@@ -89,6 +108,7 @@ export function CardCheckoutDialog({
           planTier={tier}
           billingCycle={cycle}
           planAmount={amount}
+          trialEligible={trialEligible}
           onSuccess={() => onOpenChange(false)}
         />
       </DialogContent>

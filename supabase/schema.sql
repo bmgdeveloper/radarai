@@ -196,6 +196,8 @@ create table if not exists public.subscriptions (
   mp_preapproval_id text unique,
   amount numeric(10, 2) not null default 0,
   currency text not null default 'BRL',
+  payer_email text,
+  company_name_snapshot text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint subscriptions_plan_tier_check check (plan_tier in ('start', 'pro')),
@@ -213,6 +215,25 @@ create index if not exists subscriptions_company_id_idx
 create unique index if not exists subscriptions_company_active_idx
   on public.subscriptions (company_id)
   where status in ('TRIAL', 'ACTIVE');
+
+create table if not exists public.trial_claims (
+  id uuid primary key default gen_random_uuid(),
+  email_normalized text not null,
+  company_name_normalized text not null,
+  company_id uuid references public.companies (id) on delete set null,
+  user_id uuid references auth.users (id) on delete set null,
+  claimed_at timestamptz not null default now(),
+  constraint trial_claims_email_company_unique unique (
+    email_normalized,
+    company_name_normalized
+  )
+);
+
+create index if not exists trial_claims_email_idx
+  on public.trial_claims (email_normalized);
+
+create index if not exists trial_claims_company_id_idx
+  on public.trial_claims (company_id);
 
 -- Isola o tenant do usuário autenticado sem recursão de RLS em public.users.
 create or replace function public.current_company_id()
@@ -446,6 +467,17 @@ create policy "subscriptions_update_admin"
   using (company_id = public.current_company_id() and public.is_company_admin())
   with check (company_id = public.current_company_id() and public.is_company_admin());
 
+alter table public.trial_claims enable row level security;
+
+drop policy if exists "trial_claims_select_company" on public.trial_claims;
+create policy "trial_claims_select_company"
+  on public.trial_claims for select
+  to authenticated
+  using (
+    company_id = public.current_company_id()
+    or user_id = auth.uid()
+  );
+
 grant usage on schema public to authenticated, service_role;
 
 grant select, insert, update, delete on public.companies to authenticated;
@@ -455,6 +487,7 @@ grant select, insert, update, delete on public.feedbacks to authenticated;
 grant select, insert, update, delete on public.alert_settings to authenticated;
 grant select, insert on public.payments to authenticated;
 grant select, insert, update on public.subscriptions to authenticated;
+grant select on public.trial_claims to authenticated;
 
 grant all on public.companies to service_role;
 grant all on public.users to service_role;
@@ -463,6 +496,7 @@ grant all on public.feedbacks to service_role;
 grant all on public.alert_settings to service_role;
 grant all on public.payments to service_role;
 grant all on public.subscriptions to service_role;
+grant all on public.trial_claims to service_role;
 
 grant execute on function public.current_company_id() to authenticated, service_role;
 grant execute on function public.current_user_role() to authenticated, service_role;

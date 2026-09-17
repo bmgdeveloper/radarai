@@ -93,11 +93,13 @@ export function CreditCardForm({
   planTier,
   billingCycle,
   planAmount,
+  trialEligible = true,
   onSuccess,
 }: {
   planTier: PlanTier;
   billingCycle: BillingCycle;
   planAmount: number;
+  trialEligible?: boolean;
   onSuccess?: () => void;
 }) {
   const mpPublicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY?.trim() ?? "";
@@ -112,11 +114,12 @@ export function CreditCardForm({
   const [securityCode, setSecurityCode] = useState("");
   const [cpf, setCpf] = useState("");
 
-  const trialCopy = useMemo(
-    () =>
-      `R$ 0,00 HOJE — Teste grátis por 7 dias. Primeira cobrança de ${formatPlanPrice(planAmount)} no 8º dia. Cancele a qualquer momento antes do 8º dia sem custos.`,
-    [planAmount],
-  );
+  const trialCopy = useMemo(() => {
+    if (trialEligible) {
+      return `R$ 0,00 HOJE — Teste grátis por 7 dias. Primeira cobrança de ${formatPlanPrice(planAmount)} no 8º dia. Cancele a qualquer momento antes do 8º dia sem custos.`;
+    }
+    return `Teste grátis já utilizado para este e-mail e empresa. A assinatura inicia com a cobrança de ${formatPlanPrice(planAmount)} conforme o ciclo escolhido.`;
+  }, [planAmount, trialEligible]);
 
   useEffect(() => {
     let cancelled = false;
@@ -224,7 +227,9 @@ export function CreditCardForm({
   if (done) {
     return (
       <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800 ring-1 ring-emerald-200">
-        Teste grátis ativado. Você já pode usar o Radar AI.
+        {trialEligible
+          ? "Teste grátis ativado. Você já pode usar o Radar AI."
+          : "Assinatura ativada. Você já pode usar o Radar AI."}
       </p>
     );
   }
@@ -305,10 +310,14 @@ export function CreditCardForm({
 
       <Button type="submit" disabled={pending || !sdkReady}>
         {pending
-          ? "Ativando teste…"
+          ? trialEligible
+            ? "Ativando teste…"
+            : "Ativando assinatura…"
           : !sdkReady
             ? "Carregando checkout…"
-            : "Começar teste grátis de 7 dias"}
+            : trialEligible
+              ? "Começar teste grátis de 7 dias"
+              : "Assinar com cartão"}
       </Button>
       <p className="text-xs text-muted-foreground">
         Seus dados de cartão são tokenizados no navegador pelo Mercado Pago. Não

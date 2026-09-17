@@ -49,6 +49,7 @@ export function FinancialClient({
   const [cardOpen, setCardOpen] = useState(false);
   const [cancelPending, setCancelPending] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelOk, setCancelOk] = useState<string | null>(null);
 
   const tier: PlanTier = isPlanTier(company.plan_tier)
     ? company.plan_tier
@@ -77,16 +78,29 @@ export function FinancialClient({
   }, [company.is_active, isTrial, tier]);
 
   async function cancelTrial() {
+    const confirmed = window.confirm(
+      "Cancelar o teste grátis agora? Nenhuma cobrança será feita, e este e-mail + empresa não poderão usar os 7 dias grátis novamente.",
+    );
+    if (!confirmed) return;
+
     setCancelPending(true);
     setCancelError(null);
+    setCancelOk(null);
     try {
       const response = await fetch("/api/checkout/card/cancel", {
         method: "POST",
       });
-      const payload = (await response.json()) as { error?: string };
+      const payload = (await response.json()) as {
+        error?: string;
+        message?: string;
+      };
       if (!response.ok || payload.error) {
         throw new Error(payload.error || "Não foi possível cancelar o teste.");
       }
+      setCancelOk(
+        payload.message ||
+          "Teste grátis cancelado. Nenhuma cobrança será feita.",
+      );
       router.refresh();
     } catch (cause) {
       setCancelError(
@@ -147,6 +161,9 @@ export function FinancialClient({
           </div>
           {cancelError ? (
             <p className="text-sm text-red-300">{cancelError}</p>
+          ) : null}
+          {cancelOk ? (
+            <p className="text-sm text-emerald-300">{cancelOk}</p>
           ) : null}
         </section>
       ) : (
