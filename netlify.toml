@@ -2,5 +2,6 @@
   command = "npm run build"
   publish = ".next"
 
-[functions]
-  directory = "netlify/functions"
+# Cron de coleta: desabilitado até liberar produção.
+# Quando for ativar, recriar netlify/functions/collect-feedbacks-cron.mts
+# (schedule horário) e definir CRON_SECRET no Netlify.
