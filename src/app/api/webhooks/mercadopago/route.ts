@@ -13,6 +13,8 @@ import {
 } from "@/services/mercadopago/client";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 26;
 
 type MpWebhookBody = {
   action?: string;
@@ -31,7 +33,13 @@ function extractId(request: NextRequest, body: MpWebhookBody) {
 }
 
 function isPreapprovalEvent(request: NextRequest, body: MpWebhookBody) {
-  const type = `${body.type ?? body.topic ?? request.nextUrl.searchParams.get("type") ?? ""}`.toLowerCase();
+  const type = `${
+    body.type ??
+    body.topic ??
+    request.nextUrl.searchParams.get("type") ??
+    request.nextUrl.searchParams.get("topic") ??
+    ""
+  }`.toLowerCase();
   const action = `${body.action ?? ""}`.toLowerCase();
   return (
     type.includes("subscription_preapproval") ||
@@ -40,8 +48,13 @@ function isPreapprovalEvent(request: NextRequest, body: MpWebhookBody) {
   );
 }
 
+/** Resposta rápida 200 — o MP marca 5xx (ex.: 503) como notificação com erro. */
+function ok(payload: Record<string, unknown> = {}) {
+  return Response.json({ ok: true, ...payload }, { status: 200 });
+}
+
 export async function GET() {
-  return Response.json({ ok: true });
+  return ok({ ping: true });
 }
 
 async function handlePreapproval(preapprovalId: string) {
@@ -65,7 +78,7 @@ async function handlePreapproval(preapprovalId: string) {
     (isBillingCycle(existing?.billing_cycle) ? existing.billing_cycle : null);
 
   if (!existing && !companyId) {
-    return { ok: true, ignored: true as const, preapprovalId };
+    return { ignored: true as const, preapprovalId };
   }
 
   if (status === "cancelled" || status === "canceled") {
@@ -81,7 +94,7 @@ async function handlePreapproval(preapprovalId: string) {
     if (companyId) {
       await cancelCompanyTrial({ companyId });
     }
-    return { ok: true, preapprovalId, status: "CANCELLED" };
+    return { preapprovalId, status: "CANCELLED" };
   }
 
   if (status === "paused") {
@@ -103,13 +116,12 @@ async function handlePreapproval(preapprovalId: string) {
         })
         .eq("id", companyId);
     }
-    return { ok: true, preapprovalId, status: "PAUSED" };
+    return { preapprovalId, status: "PAUSED" };
   }
 
   if (status === "authorized" || status === "active") {
     if (existing?.status === "TRIAL") {
-      // Mantém TRIAL até a 1ª cobrança (payment approved); só sincroniza status MP.
-      return { ok: true, preapprovalId, status: existing.status };
+      return { preapprovalId, status: existing.status };
     }
     if (existing && planTier && billingCycle) {
       await supabase
@@ -129,7 +141,7 @@ async function handlePreapproval(preapprovalId: string) {
     }
   }
 
-  return { ok: true, preapprovalId, status };
+  return { preapprovalId, status };
 }
 
 async function handlePayment(paymentId: string, event: string) {
@@ -208,7 +220,6 @@ async function handlePayment(paymentId: string, event: string) {
   }
 
   return {
-    ok: true,
     paymentId,
     status,
     companyId,
@@ -217,25 +228,42 @@ async function handlePayment(paymentId: string, event: string) {
 
 export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as MpWebhookBody;
-  const event = `${body.action ?? body.type ?? ""}`.toLowerCase();
+  const event = `${body.action ?? body.type ?? body.topic ?? ""}`.toLowerCase();
   const id = extractId(request, body);
 
+  // Handshake / ping do painel sem id → sempre 200
   if (!id) {
-    return Response.json({ ok: true, ignored: true });
+    return ok({ ignored: true, reason: "missing_id" });
+  }
+
+  // Sem Access Token no Netlify o MP recebe 5xx e marca "errado"
+  if (!process.env.MP_ACCESS_TOKEN?.trim()) {
+    console.error("[mercadopago webhook] MP_ACCESS_TOKEN ausente no runtime");
+    return ok({
+      received: true,
+      processed: false,
+      error: "MP_ACCESS_TOKEN não configurado no Netlify",
+    });
   }
 
   try {
     if (isPreapprovalEvent(request, body)) {
       const result = await handlePreapproval(id);
-      return Response.json(result);
+      return ok(result);
     }
 
     const result = await handlePayment(id, event);
-    return Response.json(result);
+    return ok(result);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Falha no webhook Mercado Pago.";
     console.error("[mercadopago webhook]", message);
-    return Response.json({ ok: false, error: message }, { status: 500 });
+    // 200 evita 503 no painel do MP; o erro fica no log do Netlify
+    return ok({
+      received: true,
+      processed: false,
+      error: message,
+      id,
+    });
   }
 }
