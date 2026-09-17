@@ -40,6 +40,26 @@ export async function loginAction(formData: FormData) {
       ) {
         return { error: "E-mail ou senha incorretos." };
       }
+      if (raw.includes("too many requests") || raw.includes("rate limit")) {
+        return {
+          error: "Muitas tentativas de login. Aguarde um momento e tente de novo.",
+        };
+      }
+      if (raw.includes("user banned") || raw.includes("banned")) {
+        return { error: "Esta conta está temporariamente bloqueada." };
+      }
+      if (raw.includes("network") || raw.includes("fetch")) {
+        return {
+          error: "Falha de conexão. Verifique sua internet e tente novamente.",
+        };
+      }
+      // Evita códigos/inglês cru na UI
+      if (/^[a-z0-9_ .-]+$/i.test(error.message) && /[a-z]/i.test(error.message)) {
+        return {
+          error:
+            "Não foi possível entrar. Confira e-mail e senha ou recupere a senha.",
+        };
+      }
       return { error: error.message };
     }
 

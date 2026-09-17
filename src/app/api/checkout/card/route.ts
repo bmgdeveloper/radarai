@@ -13,6 +13,7 @@ import {
   type BillingCycle,
   type PlanTier,
 } from "@/lib/billing/plans";
+import { friendlyMercadoPagoError } from "@/lib/billing/mercadopago-errors";
 import { createCardSubscription } from "@/services/mercadopago/client";
 import { createClient } from "@/lib/supabase/server";
 
@@ -160,11 +161,17 @@ export async function POST(request: NextRequest) {
       activated: true,
     });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Falha ao criar assinatura com cartão.";
-    return Response.json({ error: message }, { status: 500 });
+    const message = friendlyMercadoPagoError(error);
+    // Extrai código se a API do MP embutir no erro
+    const raw = error instanceof Error ? error.message : "";
+    const codeMatch = raw.match(/\b(cc_[a-z0-9_]+|\d{3}|e\d{3})\b/i);
+    return Response.json(
+      {
+        error: message,
+        code: codeMatch?.[1] ?? undefined,
+      },
+      { status: 500 },
+    );
   }
 }
 

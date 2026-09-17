@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatPlanPrice, type BillingCycle, type PlanTier } from "@/lib/billing/plans";
+import { friendlyMercadoPagoError } from "@/lib/billing/mercadopago-errors";
 
 type MpCardTokenResponse = {
   id?: string;
   error?: string;
   message?: string;
-  cause?: Array<{ description?: string }>;
+  cause?: Array<{ code?: string | number; description?: string; message?: string }>;
 };
 
 type MercadoPagoInstance = {
@@ -184,12 +185,7 @@ export function CreditCardForm({
 
       const cardToken = tokenResponse.id;
       if (!cardToken) {
-        const cause =
-          tokenResponse.cause?.[0]?.description ||
-          tokenResponse.message ||
-          tokenResponse.error ||
-          "Não foi possível tokenizar o cartão.";
-        throw new Error(cause);
+        throw new Error(friendlyMercadoPagoError(tokenResponse));
       }
 
       const response = await fetch("/api/checkout/card", {
@@ -203,10 +199,14 @@ export function CreditCardForm({
       });
       const payload = (await response.json()) as {
         error?: string;
+        code?: string | number;
         activated?: boolean;
       };
       if (!response.ok || payload.error) {
-        throw new Error(payload.error || "Falha ao ativar o teste grátis.");
+        throw new Error(
+          friendlyMercadoPagoError(payload.code ?? payload.error) ||
+            "Falha ao ativar o teste grátis.",
+        );
       }
 
       setDone(true);
@@ -215,9 +215,7 @@ export function CreditCardForm({
         window.location.assign("/dashboard");
       }
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Falha no checkout com cartão.",
-      );
+      setError(friendlyMercadoPagoError(cause));
     } finally {
       setPending(false);
     }
