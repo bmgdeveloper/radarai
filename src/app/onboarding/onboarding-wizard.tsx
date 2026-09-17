@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import {
   addChannelAction,
   saveCompanyAction,
@@ -86,6 +87,7 @@ export function OnboardingWizard({
     isBillingCycle(initialCycle) ? initialCycle : "monthly",
   );
   const [cardOpen, setCardOpen] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [companyReady, setCompanyReady] = useState(Boolean(company?.name));
   const [channelReady, setChannelReady] = useState(channels.length > 0);
   const [whatsappReady, setWhatsappReady] = useState(Boolean(whatsappNumber));
@@ -129,8 +131,13 @@ export function OnboardingWizard({
     });
   }
 
-  async function startCheckout() {
+  function startCheckout() {
+    if (checkoutLoading || cardOpen || !canGoCheckout) return;
+    setCheckoutLoading(true);
+    setError(null);
     setCardOpen(true);
+    // Feedback imediato; o dialog assume o fluxo do cartão.
+    window.setTimeout(() => setCheckoutLoading(false), 400);
   }
 
   return (
@@ -368,16 +375,28 @@ export function OnboardingWizard({
               </button>
             ))}
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={() => setStep(2)}>
+          <div className="mt-6 flex items-center justify-between gap-4">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={checkoutLoading}
+              onClick={() => setStep(2)}
+            >
               Voltar
             </Button>
             <Button
               type="button"
-              disabled={pending || !canGoCheckout}
+              disabled={pending || checkoutLoading || !canGoCheckout}
               onClick={startCheckout}
             >
-              Começar teste grátis
+              {checkoutLoading ? (
+                <>
+                  <Loader2 data-icon="inline-start" className="animate-spin" />
+                  Carregando…
+                </>
+              ) : (
+                "Começar teste grátis"
+              )}
             </Button>
           </div>
           {!canGoCheckout ? (

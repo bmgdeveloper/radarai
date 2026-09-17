@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 import { loginAction, signupAction } from "@/lib/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,15 +11,21 @@ import { isBillingCycle, isPlanTier } from "@/lib/billing/plans";
 
 export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   async function action(formData: FormData) {
-    setPending(true);
+    setIsLoading(true);
     setError(null);
-    const result = await loginAction(formData);
-    if (result?.error) {
-      setError(result.error);
-      setPending(false);
+    try {
+      const result = await loginAction(formData);
+      if (result?.error) {
+        setError(result.error);
+        setIsLoading(false);
+      }
+      // Em sucesso o server action faz redirect — mantém loading.
+    } catch {
+      setError("Falha no login. Tente novamente.");
+      setIsLoading(false);
     }
   }
 
@@ -26,7 +33,14 @@ export function LoginForm() {
     <form action={action} className="grid gap-4">
       <div className="grid gap-2">
         <Label htmlFor="email">E-mail</Label>
-        <Input id="email" name="email" type="email" required autoComplete="email" />
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          required
+          autoComplete="email"
+          disabled={isLoading}
+        />
       </div>
       <div className="grid gap-2">
         <Label htmlFor="password">Senha</Label>
@@ -36,11 +50,19 @@ export function LoginForm() {
           type="password"
           required
           autoComplete="current-password"
+          disabled={isLoading}
         />
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <Button type="submit" disabled={pending}>
-        {pending ? "Entrando…" : "Entrar"}
+      <Button type="submit" disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <Loader2 data-icon="inline-start" className="animate-spin" />
+            Carregando…
+          </>
+        ) : (
+          "Entrar"
+        )}
       </Button>
       <Link
         href="/reset-password"

@@ -99,7 +99,7 @@ export function CreditCardForm({
   planAmount: number;
   onSuccess?: () => void;
 }) {
-  const publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY?.trim() ?? "";
+  const mpPublicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY?.trim() ?? "";
   const [sdkReady, setSdkReady] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -141,7 +141,7 @@ export function CreditCardForm({
     event.preventDefault();
     setError(null);
 
-    if (!publicKey) {
+    if (!mpPublicKey) {
       setError("Chave pública do Mercado Pago não configurada (NEXT_PUBLIC_MP_PUBLIC_KEY).");
       return;
     }
@@ -171,7 +171,7 @@ export function CreditCardForm({
 
     setPending(true);
     try {
-      const mp = new window.MercadoPago(publicKey, { locale: "pt-BR" });
+      const mp = new window.MercadoPago(mpPublicKey, { locale: "pt-BR" });
       const tokenResponse = await mp.createCardToken({
         cardNumber: digits,
         cardholderName: cardholderName.trim(),
