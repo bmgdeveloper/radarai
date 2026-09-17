@@ -1,13 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { requireCompany, requireUser } from "@/lib/auth/session";
-import { activateCompanyFromPayment } from "@/lib/billing/activate";
-import { isBillingCycle, isPlanTier, type PlanTier } from "@/lib/billing/plans";
-import { areChannelsLocked, isTestBillingBypass } from "@/lib/billing/test-mode";
+import { areChannelsLocked } from "@/lib/billing/channel-locks";
+import { isPlanTier, type PlanTier } from "@/lib/billing/plans";
 import { channelLimitError } from "@/lib/channels/limits";
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { isChannelPlatform } from "@/services/scrapers/types";
 import {
   collectOneChannel,
@@ -63,15 +61,13 @@ export async function addChannelAction(formData: FormData) {
   if (existingError) return { error: existingError.message };
 
   const requestedTier = String(formData.get("planTier") ?? "");
-  const tier: PlanTier = isTestBillingBypass()
-    ? "pro"
-    : isPlanTier(company.plan_tier)
-      ? company.plan_tier
-      : isPlanTier(company.plan)
-        ? company.plan
-        : isPlanTier(requestedTier)
-          ? requestedTier
-          : "start";
+  const tier: PlanTier = isPlanTier(company.plan_tier)
+    ? company.plan_tier
+    : isPlanTier(company.plan)
+      ? company.plan
+      : isPlanTier(requestedTier)
+        ? requestedTier
+        : "start";
   const limitError = channelLimitError(tier, existing ?? [], platform);
   if (limitError) return { error: limitError };
 
@@ -134,33 +130,4 @@ export async function saveWhatsAppAction(formData: FormData) {
   revalidatePath("/onboarding");
   revalidatePath("/dashboard/settings");
   return { ok: true as const };
-}
-
-export async function skipPaymentAction(_planTier: string, billingCycle: string) {
-  const allow = isTestBillingBypass();
-  if (!allow) {
-    return { error: "Pagamento obrigatório neste ambiente." };
-  }
-  if (!isBillingCycle(billingCycle)) {
-    return { error: "Plano inválido." };
-  }
-
-  const { company } = await requireCompany();
-  try {
-    await activateCompanyFromPayment(
-      {
-        companyId: company.id,
-        planTier: "pro",
-        billingCycle,
-      },
-      createServiceRoleClient(),
-    );
-  } catch (error) {
-    return {
-      error:
-        error instanceof Error ? error.message : "Falha ao liberar a conta.",
-    };
-  }
-
-  redirect("/dashboard");
 }

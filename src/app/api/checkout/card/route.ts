@@ -13,7 +13,6 @@ import {
   type BillingCycle,
   type PlanTier,
 } from "@/lib/billing/plans";
-import { testCheckoutOverride } from "@/lib/billing/test-mode";
 import { createCardSubscription } from "@/services/mercadopago/client";
 import { createClient } from "@/lib/supabase/server";
 
@@ -49,10 +48,8 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Token do cartão ausente." }, { status: 400 });
   }
 
-  const requestedTier = body.planTier ?? body.plan;
-  const billingCycle = (body.billingCycle ?? body.cycle) as string | undefined;
-  const testCheckout = testCheckoutOverride(user.email);
-  const planTier = (testCheckout?.planTier ?? requestedTier) as string | undefined;
+  const planTier = body.planTier ?? body.plan;
+  const billingCycle = body.billingCycle ?? body.cycle;
 
   if (!isPlanTier(planTier) || !isBillingCycle(billingCycle)) {
     return Response.json({ error: "Plano ou ciclo inválido." }, { status: 400 });
@@ -111,7 +108,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const amount = testCheckout?.amount ?? planPrice(planTier, billingCycle);
+  const amount = planPrice(planTier, billingCycle);
   const description = `Radar AI ${PLANS[planTier].name} ${CYCLE_LABELS[billingCycle]}`;
   const trialEndsAt = trialEndsAtFrom();
 

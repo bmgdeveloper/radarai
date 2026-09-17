@@ -1,6 +1,6 @@
 import { requireCompany } from "@/lib/auth/session";
+import { areChannelsLocked } from "@/lib/billing/channel-locks";
 import { isPlanTier } from "@/lib/billing/plans";
-import { areChannelsLocked, isTestBillingBypass } from "@/lib/billing/test-mode";
 import { createClient } from "@/lib/supabase/server";
 import { SettingsClient } from "./settings-client";
 import type { ChannelPlatform } from "@/services/scrapers/types";
@@ -43,13 +43,11 @@ export default async function SettingsPage() {
         minRatingTrigger={alerts?.min_rating_trigger ?? 2}
         canManageChannels={!areChannelsLocked(company.is_active)}
         planTier={
-          isTestBillingBypass()
-            ? "pro"
-            : isPlanTier(company.plan_tier)
-              ? company.plan_tier
-              : isPlanTier(company.plan)
-                ? company.plan
-                : "start"
+          isPlanTier(company.plan_tier)
+            ? company.plan_tier
+            : isPlanTier(company.plan)
+              ? company.plan
+              : "start"
         }
       />
     </main>

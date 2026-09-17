@@ -6,8 +6,6 @@ import {
   addChannelAction,
   deleteChannelAction,
   saveWhatsAppAction,
-  sendWhatsAppTestAction,
-  testChannelAction,
 } from "@/app/dashboard/settings/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -136,15 +134,6 @@ export function SettingsClient({
                     />
                   </div>
                   <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={pending}
-                      onClick={() => run(() => testChannelAction(channel.id))}
-                    >
-                      Testar conexão
-                    </Button>
                     {canManageChannels ? (
                       <Button
                         type="button"
@@ -244,14 +233,6 @@ export function SettingsClient({
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={pending}>
               Salvar alertas
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending}
-              onClick={() => run(() => sendWhatsAppTestAction())}
-            >
-              Enviar mensagem de teste no WhatsApp
             </Button>
           </div>
         </form>

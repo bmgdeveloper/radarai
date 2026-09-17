@@ -6,7 +6,6 @@ import {
   addChannelAction,
   saveCompanyAction,
   saveWhatsAppAction,
-  skipPaymentAction,
 } from "@/app/onboarding/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,14 +62,12 @@ export function OnboardingWizard({
   whatsappNumber,
   initialPlan,
   initialCycle,
-  allowSkipPayment = false,
 }: {
   company: CompanyRecord | null;
   channels: ChannelRow[];
   whatsappNumber: string | null;
   initialPlan?: string;
   initialCycle?: string;
-  allowSkipPayment?: boolean;
 }) {
   const router = useRouter();
   const [step, setStep] = useState(() =>
@@ -382,18 +379,6 @@ export function OnboardingWizard({
             >
               Começar teste grátis
             </Button>
-            {allowSkipPayment ? (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={pending || !canGoCheckout}
-                onClick={() =>
-                  run(() => skipPaymentAction(plan, cycle))
-                }
-              >
-                Continuar sem pagar
-              </Button>
-            ) : null}
           </div>
           {!canGoCheckout ? (
             <p className="text-sm text-muted-foreground">
@@ -403,7 +388,7 @@ export function OnboardingWizard({
           ) : (
             <p className="text-sm text-muted-foreground">
               Assinatura com cartão de crédito e teste grátis de 7 dias. Sem
-              cobrança hoje — Pix não está disponível no trial.
+              cobrança hoje.
             </p>
           )}
         </div>

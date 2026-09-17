@@ -3,7 +3,6 @@ import { OnboardingWizard } from "@/app/onboarding/onboarding-wizard";
 import { requireUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { isBillingCycle, isPlanTier } from "@/lib/billing/plans";
-import { isTestBillingBypass } from "@/lib/billing/test-mode";
 import type { ChannelPlatform } from "@/services/scrapers/types";
 
 export const dynamic = "force-dynamic";
@@ -65,7 +64,6 @@ export default async function OnboardingPage({
         whatsappNumber={whatsappNumber}
         initialPlan={isPlanTier(plan) ? plan : context.company?.plan_tier ?? context.company?.plan ?? undefined}
         initialCycle={isBillingCycle(cycle) ? cycle : context.company?.billing_cycle ?? undefined}
-        allowSkipPayment={isTestBillingBypass()}
       />
     </main>
   );

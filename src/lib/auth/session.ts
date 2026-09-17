@@ -2,7 +2,6 @@ import type { User } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { PlanId } from "@/lib/billing/plans";
-import { ensureTestProCompany } from "@/lib/billing/test-mode";
 
 export type CompanyRecord = {
   id: string;
@@ -106,8 +105,7 @@ export async function requireCompany(): Promise<
 > {
   const context = await requireUser();
   if (!context.company) redirect("/onboarding");
-  const company = await ensureTestProCompany(context.company);
-  return { ...context, company };
+  return { ...context, company: context.company };
 }
 
 export function needsOnboarding(context: AuthContext | null) {
