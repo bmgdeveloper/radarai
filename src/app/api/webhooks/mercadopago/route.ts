@@ -84,6 +84,28 @@ async function handlePreapproval(preapprovalId: string) {
     return { ok: true, preapprovalId, status: "CANCELLED" };
   }
 
+  if (status === "paused") {
+    if (existing) {
+      await supabase
+        .from("subscriptions")
+        .update({
+          status: "PAUSED",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+    }
+    if (companyId) {
+      await supabase
+        .from("companies")
+        .update({
+          is_active: false,
+          subscription_status: "past_due",
+        })
+        .eq("id", companyId);
+    }
+    return { ok: true, preapprovalId, status: "PAUSED" };
+  }
+
   if (status === "authorized" || status === "active") {
     if (existing?.status === "TRIAL") {
       // Mantém TRIAL até a 1ª cobrança (payment approved); só sincroniza status MP.
@@ -157,7 +179,32 @@ async function handlePayment(paymentId: string, event: string) {
         updated_at: new Date().toISOString(),
       })
       .eq("company_id", companyId)
-      .eq("status", "TRIAL");
+      .in("status", ["TRIAL", "PAST_DUE", "PAUSED"]);
+  }
+
+  const failed =
+    status === "rejected" ||
+    status === "cancelled" ||
+    status === "canceled" ||
+    status === "refunded";
+
+  if (failed && companyId) {
+    await supabase
+      .from("subscriptions")
+      .update({
+        status: "PAST_DUE",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("company_id", companyId)
+      .in("status", ["TRIAL", "ACTIVE"]);
+
+    await supabase
+      .from("companies")
+      .update({
+        is_active: false,
+        subscription_status: "past_due",
+      })
+      .eq("id", companyId);
   }
 
   return {

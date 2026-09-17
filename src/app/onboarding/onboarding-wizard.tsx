@@ -19,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CardCheckoutDialog } from "@/components/billing/card-checkout-dialog";
-import { PixCheckoutDialog } from "@/components/billing/pix-dialog";
 import { CHANNEL_FIELDS } from "@/lib/channels/fields";
 import { unusedPlatforms } from "@/lib/channels/limits";
 import {
@@ -90,7 +89,6 @@ export function OnboardingWizard({
     isBillingCycle(initialCycle) ? initialCycle : "monthly",
   );
   const [cardOpen, setCardOpen] = useState(false);
-  const [pixOpen, setPixOpen] = useState(false);
   const [companyReady, setCompanyReady] = useState(Boolean(company?.name));
   const [channelReady, setChannelReady] = useState(channels.length > 0);
   const [whatsappReady, setWhatsappReady] = useState(Boolean(whatsappNumber));
@@ -384,14 +382,6 @@ export function OnboardingWizard({
             >
               Começar teste grátis
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending || !canGoCheckout}
-              onClick={() => setPixOpen(true)}
-            >
-              Pagar com Pix
-            </Button>
             {allowSkipPayment ? (
               <Button
                 type="button"
@@ -407,9 +397,15 @@ export function OnboardingWizard({
           </div>
           {!canGoCheckout ? (
             <p className="text-sm text-muted-foreground">
-              Complete empresa, um canal e o WhatsApp para assinar.
+              Complete empresa, um canal e o WhatsApp para assinar com cartão
+              (7 dias grátis).
             </p>
-          ) : null}
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Assinatura com cartão de crédito e teste grátis de 7 dias. Sem
+              cobrança hoje — Pix não está disponível no trial.
+            </p>
+          )}
         </div>
       ) : null}
 
@@ -420,13 +416,6 @@ export function OnboardingWizard({
         defaultTier={plan}
         defaultCycle={cycle}
         title="Teste grátis com cartão"
-      />
-      <PixCheckoutDialog
-        open={pixOpen}
-        onOpenChange={setPixOpen}
-        defaultTier={plan}
-        defaultCycle={cycle}
-        title="Pagar com Pix"
       />
     </div>
   );

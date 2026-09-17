@@ -87,7 +87,7 @@ function toCardSubscription(preapproval: PreApprovalResponse): CardSubscriptionR
   };
 }
 
-/** Cria assinatura (preapproval) com cartão e 1ª cobrança em startDate (trial). */
+/** Cria assinatura (preapproval) com cartão; 1ª cobrança só após o trial (start_date). */
 export async function createCardSubscription(input: {
   amount: number;
   description: string;
@@ -112,6 +112,7 @@ export async function createCardSubscription(input: {
       auto_recurring: {
         frequency: frequencyMonths,
         frequency_type: "months",
+        // Reverse trial: nenhuma cobrança imediata; 1ª fatura em start_date (+7 dias).
         start_date: input.startDate.toISOString(),
         transaction_amount: Number(input.amount.toFixed(2)),
         currency_id: "BRL",

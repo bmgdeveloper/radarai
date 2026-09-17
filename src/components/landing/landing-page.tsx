@@ -149,8 +149,8 @@ export function LandingPage() {
                 Planos
               </h2>
               <p className="mt-2 max-w-xl text-sm text-slate-400">
-                Pix via Mercado Pago. Trimestral com desconto especial. A coleta só
-                roda com a assinatura ativa.
+                Cartão de crédito com 7 dias de teste grátis via Mercado Pago.
+                Trimestral com desconto. Sem cobrança no cadastro do cartão.
               </p>
             </div>
             <div className="inline-flex rounded-full border border-white/10 bg-[#111A2E] p-1 text-sm">

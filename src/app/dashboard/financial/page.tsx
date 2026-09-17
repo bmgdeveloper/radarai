@@ -29,7 +29,7 @@ export default async function FinancialPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Financeiro & Assinatura</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Teste grátis de 7 dias no cartão, Pix e histórico de cobranças.
+          Teste grátis de 7 dias no cartão e histórico de cobranças recorrentes.
         </p>
       </div>
       <FinancialClient

@@ -86,7 +86,8 @@ export default async function DashboardPage({
 
       {!company.is_active ? (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
-          Assinatura pendente. A coleta automática é liberada após o Pix.{" "}
+          Assinatura pendente. A coleta automática é liberada após o cartão com
+          teste grátis.{" "}
           <Link href="/dashboard/financial" className="font-medium underline underline-offset-4">
             Ir para o financeiro
           </Link>

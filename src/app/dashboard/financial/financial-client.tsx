@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CardCheckoutDialog } from "@/components/billing/card-checkout-dialog";
-import { PixCheckoutDialog } from "@/components/billing/pix-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cycleLabel, planLabel, subscriptionDisplayStatus } from "@/lib/billing/status";
@@ -48,7 +47,6 @@ export function FinancialClient({
 }) {
   const router = useRouter();
   const [cardOpen, setCardOpen] = useState(false);
-  const [pixOpen, setPixOpen] = useState(false);
   const [cancelPending, setCancelPending] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
@@ -156,14 +154,13 @@ export function FinancialClient({
           <Button type="button" onClick={() => setCardOpen(true)}>
             {cta}
           </Button>
-          <Button type="button" variant="outline" onClick={() => setPixOpen(true)}>
-            Pagar com Pix
-          </Button>
         </div>
       )}
 
       <section className="overflow-hidden rounded-2xl border border-border/70 bg-card">
-        <div className="border-b px-4 py-3 text-sm font-medium">Histórico de faturas Pix</div>
+        <div className="border-b px-4 py-3 text-sm font-medium">
+          Histórico de cobranças
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-muted/50 text-muted-foreground">
@@ -208,13 +205,6 @@ export function FinancialClient({
         defaultTier={tier === "start" ? "pro" : tier}
         defaultCycle={cycle}
         title={cta}
-      />
-      <PixCheckoutDialog
-        open={pixOpen}
-        onOpenChange={setPixOpen}
-        defaultTier={tier === "start" ? "pro" : tier}
-        defaultCycle={cycle}
-        title="Pagar com Pix"
       />
     </div>
   );
