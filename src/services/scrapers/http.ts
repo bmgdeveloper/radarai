@@ -52,8 +52,13 @@ function headerCookies(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String) : [String(value)];
 }
 
-async function fetchRequest(opts: BrowserRequestOpts): Promise<BrowserResponse> {
-  const cookie = opts.cookie;
+export async function browserRequest(
+  opts: BrowserRequestOpts,
+): Promise<BrowserResponse> {
+  let cookie = opts.cookie;
+  const session = opts.session as { cookie?: string } | undefined;
+  if (!cookie && session?.cookie) cookie = session.cookie;
+
   const body = opts.form ? new URLSearchParams(opts.form).toString() : undefined;
   const response = await fetch(opts.url, {
     method: opts.method ?? "GET",
@@ -75,103 +80,49 @@ async function fetchRequest(opts: BrowserRequestOpts): Promise<BrowserResponse> 
     typeof response.headers.getSetCookie === "function"
       ? response.headers.getSetCookie()
       : response.headers.get("set-cookie");
-  return {
+  const result: BrowserResponse = {
     status: response.status,
     data: parseBody(text),
     text,
     setCookie: headerCookies(setCookieHeader),
   };
-}
-
-async function scrapingRequest(opts: BrowserRequestOpts): Promise<BrowserResponse> {
-  const { gotScraping } = await import("got-scraping");
-  const base = {
-    url: opts.url,
-    method: opts.method ?? "GET",
-    throwHttpErrors: false,
-    sessionToken: opts.session ?? {},
-    form: opts.form,
-    timeout: { request: Number(process.env.FEEDBACK_HTTP_TIMEOUT_MS ?? 20000) },
-    headerGeneratorOptions: {
-      browsers: [{ name: "chrome" as const }],
-      devices: ["desktop" as const],
-      locales: ["pt-BR", "en-US"],
-      operatingSystems: ["macos" as const, "windows" as const],
-    },
-    headers: {
-      Accept: "application/json, text/html;q=0.9, */*;q=0.8",
-      Origin: opts.origin,
-      Referer: opts.referer,
-      ...(opts.cookie ? { Cookie: opts.cookie } : {}),
-      ...opts.headers,
-    },
-  };
-
-  try {
-    const response = await gotScraping({ ...base, http2: true });
-    return toBrowserResponse(response);
-  } catch {
-    const response = await gotScraping({ ...base, http2: false });
-    return toBrowserResponse(response);
-  }
-}
-
-function toBrowserResponse(response: {
-  statusCode: number;
-  body: unknown;
-  headers: Record<string, unknown>;
-}): BrowserResponse {
-  const text = typeof response.body === "string" ? response.body : String(response.body ?? "");
-  return {
-    status: response.statusCode,
-    data: parseBody(text),
-    text,
-    setCookie: headerCookies(response.headers["set-cookie"]),
-  };
-}
-
-export async function browserRequest(
-  opts: BrowserRequestOpts,
-): Promise<BrowserResponse> {
-  let cookie = opts.cookie;
-  const session = opts.session as { cookie?: string } | undefined;
-  if (!cookie && session?.cookie) cookie = session.cookie;
-
-  const requestOpts = { ...opts, cookie };
-  let response = await fetchRequest(requestOpts);
-  const blocked =
-    response.status === 403 || /just a moment|cloudflare/i.test(response.text);
-  if (blocked) {
-    response = await scrapingRequest(requestOpts);
-  }
 
   if (session) {
-    session.cookie = mergeCookies(session.cookie, response.setCookie);
+    session.cookie = mergeCookies(session.cookie, result.setCookie);
   }
-  return response;
-}
-
-const reclameAquiSession = {};
-let reclameAquiWarmed = false;
-
-async function warmReclameAquiSession() {
-  if (reclameAquiWarmed) return;
-  await scrapingRequest({
-    url: "https://www.reclameaqui.com.br/",
-    session: reclameAquiSession,
-    origin: "https://www.reclameaqui.com.br",
-    referer: "https://www.reclameaqui.com.br/",
-  });
-  reclameAquiWarmed = true;
+  return result;
 }
 
 export const browserJsonGet: JsonGet = async (url) => {
-  await warmReclameAquiSession();
   return browserRequest({
     url,
-    session: reclameAquiSession,
     origin: "https://www.reclameaqui.com.br",
     referer: "https://www.reclameaqui.com.br/",
     headers: { Accept: "application/json, text/plain, */*" },
   });
 };
+
+/** Fetch JSON com headers de navegador (sem got-scraping). */
+export async function nativeJsonGet(url: string): Promise<{
+  status: number;
+  data: unknown;
+  text: string;
+}> {
+  const response = await fetch(url, {
+    method: "GET",
+    cache: "no-store",
+    redirect: "follow",
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      "User-Agent": CHROME_UA,
+      Origin: "https://www.reclameaqui.com.br",
+      Referer: "https://www.reclameaqui.com.br/",
+    },
+  });
+  const text = await response.text();
+  return {
+    status: response.status,
+    data: parseBody(text),
+    text,
+  };
+}

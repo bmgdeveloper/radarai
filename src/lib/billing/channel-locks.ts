@@ -1,4 +1,4 @@
-/** Com assinatura ativa, canais ficam travados (alterações só via suporte). */
-export function areChannelsLocked(isActive: boolean) {
-  return isActive;
+/** Com assinatura ativa os canais ficam liberados para o próprio cliente gerenciar. */
+export function areChannelsLocked(_isActive: boolean) {
+  return false;
 }

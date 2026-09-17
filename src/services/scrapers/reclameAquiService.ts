@@ -1,5 +1,5 @@
 import { parseReclameAquiSlug } from "./ids";
-import { browserJsonGet, type JsonGet } from "./http";
+import { nativeJsonGet, type JsonGet } from "./http";
 import {
   clampRating,
   cleanText,
@@ -7,6 +7,9 @@ import {
   toIsoDate,
   type RawFeedback,
 } from "./types";
+
+const RECLAME_AQUI_UNAVAILABLE =
+  "Não foi possível consultar os dados do Reclame AQUI no momento. Tente novamente em instantes.";
 
 type Card = {
   id?: string | number;
@@ -29,6 +32,7 @@ function extractCards(payload: unknown): Card[] {
   const complains = (result.complains ?? result) as Record<string, unknown>;
   if (Array.isArray(complains.data)) return complains.data as Card[];
   if (Array.isArray(result.data)) return result.data as Card[];
+  if (Array.isArray(root.data)) return root.data as Card[];
   if (Array.isArray(payload)) return payload as Card[];
   return [];
 }
@@ -85,7 +89,14 @@ function extractCompanyId(data: unknown): string | undefined {
   const doc = Array.isArray(root.documents)
     ? (root.documents[0] as Record<string, unknown> | undefined)
     : undefined;
-  const id = root.id ?? root.companyId ?? root.idRa ?? nested?.id ?? doc?.id;
+  const id =
+    root.id ??
+    root.companyId ??
+    root.idRa ??
+    root.companyid ??
+    nested?.id ??
+    nested?.companyId ??
+    doc?.id;
   return id == null || String(id).trim() === "" ? undefined : String(id);
 }
 
@@ -93,16 +104,21 @@ async function resolveCompanyId(
   slug: string,
   getJson: JsonGet,
 ): Promise<string> {
-  const url = `https://iosite.reclameaqui.com.br/raichu-io-site-v1/company/shortname/${encodeURIComponent(slug)}`;
-  const response = await getJson(url);
+  const publicUrl = `https://iosearch.reclameaqui.com.br/raichannels/v1/company/public/${encodeURIComponent(slug)}`;
+  const publicResponse = await getJson(publicUrl);
+  if (publicResponse.status < 400 && publicResponse.data) {
+    const fromPublic = extractCompanyId(publicResponse.data);
+    if (fromPublic) return fromPublic;
+  }
+
+  const fallbackUrl = `https://iosite.reclameaqui.com.br/raichu-io-site-v1/company/shortname/${encodeURIComponent(slug)}`;
+  const response = await getJson(fallbackUrl);
   if (response.status >= 400 || !response.data || typeof response.data !== "object") {
-    throw new Error(
-      `Reclame AQUI: não achei a empresa "${slug}". Confira o link da página da empresa.`,
-    );
+    throw new Error(RECLAME_AQUI_UNAVAILABLE);
   }
   const id = extractCompanyId(response.data);
   if (!id) {
-    throw new Error(`Reclame AQUI: o slug ${slug} não retornou id.`);
+    throw new Error(RECLAME_AQUI_UNAVAILABLE);
   }
   return id;
 }
@@ -124,13 +140,8 @@ async function collectPages(
   for (let page = 0; page < maxPages; page += 1) {
     const url = `${base}/query/companyComplains/${pageSize}/${page}?company=${encodeURIComponent(companyId)}${query}`;
     const response = await getJson(url);
-    if (response.status === 403 || /just a moment|cloudflare/i.test(response.text)) {
-      throw new Error(
-        "Reclame AQUI bloqueou a coleta (Cloudflare). Tente de novo em alguns minutos.",
-      );
-    }
     if (response.status >= 400) {
-      throw new Error(`Reclame AQUI HTTP ${response.status}`);
+      throw new Error(RECLAME_AQUI_UNAVAILABLE);
     }
 
     const cards = extractCards(response.data);
@@ -151,25 +162,32 @@ async function collectPages(
 export async function fetchReclameAquiReviews(
   urlOrSlug: string,
   limit = 50,
-  getJson: JsonGet = browserJsonGet,
+  getJson: JsonGet = nativeJsonGet,
 ): Promise<RawFeedback[]> {
-  const slug = parseReclameAquiSlug(urlOrSlug);
-  const companyId = await resolveCompanyId(slug, getJson);
-  const num = normalizeLimit(limit);
-  const latestLimit = Math.max(1, Math.ceil(num * 0.7));
-  const evaluatedLimit = Math.max(1, num - latestLimit);
+  try {
+    const slug = parseReclameAquiSlug(urlOrSlug);
+    const companyId = await resolveCompanyId(slug, getJson);
+    const num = normalizeLimit(limit);
+    const latestLimit = Math.max(1, Math.ceil(num * 0.7));
+    const evaluatedLimit = Math.max(1, num - latestLimit);
 
-  const [latest, evaluated] = await Promise.all([
-    collectPages(companyId, latestLimit, getJson),
-    collectPages(companyId, evaluatedLimit, getJson, "&evaluated=true"),
-  ]);
+    const [latest, evaluated] = await Promise.all([
+      collectPages(companyId, latestLimit, getJson),
+      collectPages(companyId, evaluatedLimit, getJson, "&evaluated=true"),
+    ]);
 
-  const merged: RawFeedback[] = [];
-  const seen = new Set<string>();
-  for (const item of [...latest, ...evaluated]) {
-    if (seen.has(item.externalId)) continue;
-    seen.add(item.externalId);
-    merged.push(item);
+    const merged: RawFeedback[] = [];
+    const seen = new Set<string>();
+    for (const item of [...latest, ...evaluated]) {
+      if (seen.has(item.externalId)) continue;
+      seen.add(item.externalId);
+      merged.push(item);
+    }
+    return merged;
+  } catch (cause) {
+    if (cause instanceof Error && cause.message === RECLAME_AQUI_UNAVAILABLE) {
+      throw cause;
+    }
+    throw new Error(RECLAME_AQUI_UNAVAILABLE);
   }
-  return merged;
 }

@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { requireCompany } from "@/lib/auth/session";
-import { areChannelsLocked } from "@/lib/billing/channel-locks";
 import { createClient } from "@/lib/supabase/server";
 import { addChannelAction, saveWhatsAppAction } from "@/app/onboarding/actions";
 import { collectAndStoreFeedbacks } from "@/services/ingestion/collectFeedbacks";
@@ -24,12 +23,6 @@ export async function toggleChannelAction(channelId: string, isActive: boolean) 
 
 export async function deleteChannelAction(channelId: string) {
   const { company } = await requireCompany();
-  if (areChannelsLocked(company.is_active)) {
-    return {
-      error:
-        "Para alterar ou incluir novos canais monitorados, entre em contato com o suporte BMG Tech AI.",
-    };
-  }
   const supabase = await createClient();
   const { error } = await supabase
     .from("monitored_channels")

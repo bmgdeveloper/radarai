@@ -70,11 +70,30 @@ create table if not exists public.monitored_channels (
   company_id uuid not null references public.companies (id) on delete cascade,
   platform text not null,
   url_or_app_id text not null,
-  is_active boolean not null default true
+  is_active boolean not null default true,
+  access_token text,
+  refresh_token text,
+  merchant_id text,
+  auth_type text not null default 'link'
+    check (auth_type in ('link', 'oauth'))
 );
 
 alter table public.monitored_channels
   alter column platform type text using platform::text;
+
+alter table public.monitored_channels
+  add column if not exists access_token text,
+  add column if not exists refresh_token text,
+  add column if not exists merchant_id text,
+  add column if not exists auth_type text not null default 'link';
+
+do $$ begin
+  alter table public.monitored_channels
+    add constraint monitored_channels_auth_type_check
+    check (auth_type in ('link', 'oauth'));
+exception
+  when duplicate_object then null;
+end $$;
 
 create table if not exists public.feedbacks (
   id uuid primary key default gen_random_uuid(),

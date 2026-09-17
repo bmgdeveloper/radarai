@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { requireCompany, requireUser } from "@/lib/auth/session";
-import { areChannelsLocked } from "@/lib/billing/channel-locks";
 import { isPlanTier, type PlanTier } from "@/lib/billing/plans";
 import { channelLimitError } from "@/lib/channels/limits";
+import { CHANNEL_FIELDS } from "@/lib/channels/fields";
 import { createClient } from "@/lib/supabase/server";
 import { isChannelPlatform } from "@/services/scrapers/types";
 import {
@@ -43,15 +43,15 @@ export async function addChannelAction(formData: FormData) {
   const platform = String(formData.get("platform") ?? "");
   const urlOrAppId = String(formData.get("urlOrAppId") ?? "").trim();
   if (!isChannelPlatform(platform)) return { error: "Plataforma inválida." };
+  if (CHANNEL_FIELDS[platform]?.authType === "oauth") {
+    return {
+      error:
+        "Esta plataforma exige conexão OAuth. Use o botão Conectar Conta Oficial.",
+    };
+  }
   if (!urlOrAppId) return { error: "Informe o link ou ID do canal." };
 
   const { company } = await requireCompany();
-  if (areChannelsLocked(company.is_active)) {
-    return {
-      error:
-        "Para alterar ou incluir novos canais monitorados, entre em contato com o suporte BMG Tech AI.",
-    };
-  }
 
   const supabase = await createClient();
   const { data: existing, error: existingError } = await supabase
@@ -78,6 +78,7 @@ export async function addChannelAction(formData: FormData) {
       platform,
       url_or_app_id: urlOrAppId,
       is_active: true,
+      auth_type: "link",
     })
     .select("id, company_id, platform, url_or_app_id, is_active")
     .single();

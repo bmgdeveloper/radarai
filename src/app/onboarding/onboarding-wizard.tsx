@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CardCheckoutDialog } from "@/components/billing/card-checkout-dialog";
-import { CHANNEL_FIELDS } from "@/lib/channels/fields";
+import { CHANNEL_FIELDS, isOAuthPlatform, oauthConnectPath } from "@/lib/channels/fields";
 import { unusedPlatforms } from "@/lib/channels/limits";
 import {
   CYCLE_LABELS,
@@ -221,8 +221,8 @@ export function OnboardingWizard({
             <strong className="text-foreground">Pro</strong> — 1 canal de cada
             plataforma.
             <br />
-            Depois do pagamento os canais ficam travados. Inclua agora tudo o que
-            precisa acompanhar.
+            Plataformas públicas usam URL/link. iFood e Mercado Livre usam
+            &quot;Conectar Conta Oficial&quot; (OAuth).
           </p>
           <input type="hidden" name="planTier" value={plan} />
           {availablePlatforms.length > 0 ? (
@@ -250,13 +250,31 @@ export function OnboardingWizard({
             </Select>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="urlOrAppId">{field.label}</Label>
-            <Input
-              id="urlOrAppId"
-              name="urlOrAppId"
-              required
-              placeholder={field.placeholder}
-            />
+            {isOAuthPlatform(selectedPlatform) ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  {field.label} exige autorização oficial da loja.
+                </p>
+                <a
+                  href={oauthConnectPath(
+                    selectedPlatform as "ifood" | "mercadolivre",
+                  )}
+                  className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"
+                >
+                  Conectar Conta Oficial
+                </a>
+              </>
+            ) : (
+              <>
+                <Label htmlFor="urlOrAppId">URL / Link da empresa</Label>
+                <Input
+                  id="urlOrAppId"
+                  name="urlOrAppId"
+                  required
+                  placeholder={field.placeholder}
+                />
+              </>
+            )}
           </div>
             </>
           ) : null}
@@ -289,7 +307,14 @@ export function OnboardingWizard({
             <Button type="button" variant="outline" onClick={() => setStep(0)}>
               Voltar
             </Button>
-            <Button type="submit" disabled={pending || availablePlatforms.length === 0}>
+            <Button
+              type="submit"
+              disabled={
+                pending ||
+                availablePlatforms.length === 0 ||
+                isOAuthPlatform(selectedPlatform)
+              }
+            >
               {pending ? "Salvando e coletando…" : "Salvar canal"}
             </Button>
             {channels.length > 0 ? (

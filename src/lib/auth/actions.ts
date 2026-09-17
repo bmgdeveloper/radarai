@@ -199,5 +199,5 @@ export async function logoutAction() {
   } catch {
     // Sem Supabase configurado, só encerra a sessão local.
   }
-  redirect("/");
+  redirect("/login");
 }

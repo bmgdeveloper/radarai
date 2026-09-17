@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { LoginDialog } from "@/components/auth/login-dialog";
 import { ProductShowcase } from "@/components/landing/ProductShowcase";
+import { APP_VERSION_LABEL } from "@/lib/app-version";
 import {
   CYCLE_LABELS,
   formatPlanPrice,
@@ -39,6 +40,9 @@ export function LandingPage() {
             </span>
             <span className="font-[family-name:var(--font-heading)] text-lg font-semibold text-white">
               Radar AI
+            </span>
+            <span className="ml-2 align-middle rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wide text-slate-400">
+              {APP_VERSION_LABEL}
             </span>
           </span>
         </Link>
@@ -244,7 +248,9 @@ export function LandingPage() {
       </main>
 
       <footer className="border-t border-white/10 px-6 py-8 text-center text-xs text-slate-500">
-        <p>Radar AI · produto da BMG Tech AI · radar.bmgtechai.com.br</p>
+        <p>
+          Radar AI {APP_VERSION_LABEL} · produto da BMG Tech AI · radar.bmgtechai.com.br
+        </p>
         <p className="mt-2">
           <Link href="/termos" className="hover:text-slate-300 hover:underline">
             Termos de Uso

@@ -23,8 +23,8 @@ export function RenewalBanner({ company }: { company: CompanyRecord }) {
 
   const message =
     display === "Suspenso"
-      ? "Assinatura suspensa. Renove no Financeiro para retomar a coleta e os alertas."
-      : `Sua assinatura vence em ${remaining} dia(s). Renove agora para não interromper o Radar AI.`;
+      ? "Assinatura suspensa. Renove no Financeiro para retomar a coleta e os alertas no WhatsApp."
+      : `Sua assinatura vence em ${remaining} dia(s). Renove agora para não pausar os alertas no WhatsApp.`;
 
   return (
     <div className="border-b border-amber-300 bg-amber-50 px-6 py-3 text-sm text-amber-950">

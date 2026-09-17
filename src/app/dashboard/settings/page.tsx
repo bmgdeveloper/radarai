@@ -1,5 +1,5 @@
+import { Suspense } from "react";
 import { requireCompany } from "@/lib/auth/session";
-import { areChannelsLocked } from "@/lib/billing/channel-locks";
 import { isPlanTier } from "@/lib/billing/plans";
 import { createClient } from "@/lib/supabase/server";
 import { SettingsClient } from "./settings-client";
@@ -14,7 +14,7 @@ export default async function SettingsPage() {
   const [{ data: channels }, { data: alerts }] = await Promise.all([
     supabase
       .from("monitored_channels")
-      .select("id, platform, url_or_app_id, is_active")
+      .select("id, platform, url_or_app_id, is_active, auth_type")
       .eq("company_id", company.id)
       .order("platform"),
     supabase
@@ -32,24 +32,27 @@ export default async function SettingsPage() {
           Fontes monitoradas e número que recebe os alertas do Radar AI.
         </p>
       </div>
-      <SettingsClient
-        channels={(channels ?? []) as Array<{
-          id: string;
-          platform: ChannelPlatform;
-          url_or_app_id: string;
-          is_active: boolean;
-        }>}
-        whatsappNumber={alerts?.whatsapp_number ?? null}
-        minRatingTrigger={alerts?.min_rating_trigger ?? 2}
-        canManageChannels={!areChannelsLocked(company.is_active)}
-        planTier={
-          isPlanTier(company.plan_tier)
-            ? company.plan_tier
-            : isPlanTier(company.plan)
-              ? company.plan
-              : "start"
-        }
-      />
+      <Suspense fallback={<p className="text-sm text-muted-foreground">Carregando…</p>}>
+        <SettingsClient
+          channels={(channels ?? []) as Array<{
+            id: string;
+            platform: ChannelPlatform;
+            url_or_app_id: string;
+            is_active: boolean;
+            auth_type?: "link" | "oauth" | null;
+          }>}
+          whatsappNumber={alerts?.whatsapp_number ?? null}
+          minRatingTrigger={alerts?.min_rating_trigger ?? 2}
+          canManageChannels
+          planTier={
+            isPlanTier(company.plan_tier)
+              ? company.plan_tier
+              : isPlanTier(company.plan)
+                ? company.plan
+                : "start"
+          }
+        />
+      </Suspense>
     </main>
   );
 }

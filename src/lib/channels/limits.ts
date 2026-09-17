@@ -34,8 +34,19 @@ export function channelLimitError(
   }
   if (existing.length >= PLANS[tier].maxChannels) {
     return tier === "start"
-      ? "O plano Start permite até 2 canais, sem repetir a plataforma."
-      : "Todas as plataformas já estão cadastradas.";
+      ? "Limite do plano Start atingido (até 2 canais). Faça upgrade para o Pro."
+      : "Todas as plataformas já estão cadastradas. Faça upgrade se precisar de mais canais.";
   }
   return null;
+}
+
+export function planChannelLimitMessage(tier: PlanTier, atLimit: boolean) {
+  if (!atLimit) {
+    return tier === "start"
+      ? "Plano Start: até 2 canais, sem repetir a mesma plataforma."
+      : "Plano Pro: 1 canal de cada plataforma disponível.";
+  }
+  return tier === "start"
+    ? "Limite de 2 canais do plano Start atingido. Faça upgrade para o Pro."
+    : "Todas as plataformas já estão cadastradas.";
 }

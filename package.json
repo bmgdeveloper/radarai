@@ -1,12 +1,15 @@
 {
   "name": "radar-ia",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "private": true,
   "scripts": {
+    "prebuild": "node scripts/generate-version.mjs",
+    "predev": "node scripts/generate-version.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "version:sync": "node scripts/generate-version.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -17,7 +20,7 @@
     "class-variance-authority": "^0.7.1",
     "cn": "^0.3.0",
     "google-play-scraper": "^10.1.3",
-    "got-scraping": "^4.2.1",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.46.0",
     "mercadopago": "^3.6.1",
     "next": "16.3.4",

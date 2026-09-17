@@ -26,7 +26,7 @@ export function subscriptionDisplayStatus(input: {
   }
   const remaining = daysRemaining(input.periodEnd);
   if (remaining <= 0) return "Suspenso";
-  if (remaining <= 5) return "A Vencer";
+  if (remaining <= 7) return "A Vencer";
   return "Ativo";
 }
 

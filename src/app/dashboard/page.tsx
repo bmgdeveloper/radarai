@@ -3,6 +3,7 @@ import { unstable_rethrow } from "next/navigation";
 import { AIInsightBanner } from "@/components/dashboard/AIInsightBanner";
 import { CollectNowButton } from "@/components/dashboard/CollectNowButton";
 import { DashboardFilters } from "@/components/dashboard/DashboardFilters";
+import { ExportPdfButton } from "@/components/dashboard/ExportPdfButton";
 import { FeedbackTable } from "@/components/dashboard/FeedbackTable";
 import { KpiCards } from "@/components/dashboard/KpiCards";
 import { requireCompany } from "@/lib/auth/session";
@@ -81,7 +82,15 @@ export default async function DashboardPage({
             Análise de reputação, categorias geradas por IA e alertas de insatisfação.
           </p>
         </div>
-        <CollectNowButton />
+        <div className="flex flex-wrap gap-2">
+          <ExportPdfButton
+            companyName={company.name}
+            kpis={kpis}
+            insights={insights}
+            feedbacks={feedbacks}
+          />
+          <CollectNowButton />
+        </div>
       </div>
 
       {!company.is_active ? (
