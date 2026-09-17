@@ -28,8 +28,8 @@ export function mapMercadoPagoError(code: string | number | null | undefined): s
     "324": "CPF inválido. Confira os dígitos.",
     "325": "Mês de vencimento inválido.",
     "326": "Ano de vencimento inválido.",
-    cc_val_433: "Número de cartão inválido. Por favor, confira os dígitos digitados.",
-    "cc_val_433": "Número de cartão inválido. Por favor, confira os dígitos digitados.",
+    cc_val_433:
+      "Número de cartão inválido. Por favor, confira os dígitos digitados.",
 
     // Recusas comuns de pagamento / assinatura
     "106": "Não foi possível processar o pagamento. Tente outro cartão.",
