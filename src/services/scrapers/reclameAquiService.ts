@@ -1,8 +1,6 @@
 import { parseReclameAquiSlug } from "./ids";
-import { nativeJsonGet, type JsonGet } from "./http";
 import {
   clampRating,
-  cleanText,
   normalizeLimit,
   toIsoDate,
   type RawFeedback,
@@ -11,31 +9,18 @@ import {
 const RECLAME_AQUI_UNAVAILABLE =
   "Não foi possível consultar os dados do Reclame AQUI no momento. Tente novamente em instantes.";
 
-type Card = {
-  id?: string | number;
-  title?: string;
-  titleMasked?: string;
-  description?: string;
-  descriptionMasked?: string;
-  created?: string;
-  status?: string;
-  url?: string;
-  hasReply?: boolean;
-  score?: number | null;
-  evaluated?: boolean;
-  userName?: string | null;
+/** Headers de navegador — Netlify / Cloudflare. */
+const RECLAME_AQUI_HEADERS: Record<string, string> = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  Accept: "application/json, text/plain, */*",
+  "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+  Origin: "https://www.reclameaqui.com.br",
+  Referer: "https://www.reclameaqui.com.br/",
+  "Cache-Control": "no-cache",
 };
 
-function extractCards(payload: unknown): Card[] {
-  const root = (payload ?? {}) as Record<string, unknown>;
-  const result = (root.complainResult ?? root) as Record<string, unknown>;
-  const complains = (result.complains ?? result) as Record<string, unknown>;
-  if (Array.isArray(complains.data)) return complains.data as Card[];
-  if (Array.isArray(result.data)) return result.data as Card[];
-  if (Array.isArray(root.data)) return root.data as Card[];
-  if (Array.isArray(payload)) return payload as Card[];
-  return [];
-}
+type RaCard = Record<string, unknown>;
 
 function stripHtml(value: string): string {
   return value
@@ -45,11 +30,12 @@ function stripHtml(value: string): string {
     .trim();
 }
 
-function cardText(card: Card): string {
-  const candidates = [card.descriptionMasked, card.description, card.titleMasked, card.title]
-    .map((value) => stripHtml(String(value ?? "")))
-    .filter(Boolean);
-  return candidates.sort((a, b) => b.length - a.length)[0] ?? "";
+function pickString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return stripHtml(value);
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  }
+  return null;
 }
 
 function ratingFromReclameAqui(score: unknown): number | null {
@@ -61,131 +47,245 @@ function ratingFromReclameAqui(score: unknown): number | null {
   return clampRating(numeric);
 }
 
-function toFeedback(card: Card): RawFeedback | null {
-  const id = cleanText(String(card.id ?? ""));
+/**
+ * Extrai a slug limpa de URL completa ou texto solto.
+ * Ex.: .../empresa/mcdonalds/lista-reclamacoes/ → mcdonalds
+ */
+export function extractReclameAquiSlug(urlOrSlug: string): string {
+  return parseReclameAquiSlug(urlOrSlug);
+}
+
+async function raFetch(url: string): Promise<{ status: number; data: unknown; text: string }> {
+  const response = await fetch(url, {
+    method: "GET",
+    cache: "no-store",
+    redirect: "follow",
+    headers: RECLAME_AQUI_HEADERS,
+  });
+  const text = await response.text();
+  let data: unknown = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+  return { status: response.status, data, text };
+}
+
+function asArray(value: unknown): RaCard[] {
+  if (Array.isArray(value)) return value as RaCard[];
+  return [];
+}
+
+function extractComplaintCards(payload: unknown): RaCard[] {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload as RaCard[];
+
+  const root = payload as Record<string, unknown>;
+  const candidates = [
+    root.data,
+    root.complains,
+    root.complaints,
+    root.content,
+    root.items,
+    root.results,
+    (root.complainResult as Record<string, unknown> | undefined)?.complains,
+    (
+      (root.complainResult as Record<string, unknown> | undefined)?.complains as
+        | Record<string, unknown>
+        | undefined
+    )?.data,
+    (root.complains as Record<string, unknown> | undefined)?.data,
+  ];
+
+  for (const candidate of candidates) {
+    const list = asArray(candidate);
+    if (list.length > 0) return list;
+  }
+
+  if (root.data && typeof root.data === "object" && !Array.isArray(root.data)) {
+    const nested = extractComplaintCards(root.data);
+    if (nested.length > 0) return nested;
+  }
+
+  return [];
+}
+
+function cardToFeedback(card: RaCard, slug: string): RawFeedback | null {
+  const id = pickString(
+    card.id,
+    card.complaintId,
+    card.uuid,
+    card.hash,
+    card.externalId,
+  );
   if (!id) return null;
-  const title = stripHtml(String(card.titleMasked || card.title || ""));
-  const body = cardText(card);
+
+  const title = pickString(card.titleMasked, card.title, card.headline);
+  const body = pickString(
+    card.descriptionMasked,
+    card.description,
+    card.content,
+    card.text,
+    card.complaint,
+  );
   const text = [title, body].filter(Boolean).join("\n") || null;
-  const author = cleanText(card.userName);
+  const author = pickString(
+    card.user_name,
+    card.userName,
+    card.user,
+    card.consumerName,
+    card.author,
+  );
   const maskedAuthor = !author || /^\*+$/.test(author) ? null : author;
+  const rating = ratingFromReclameAqui(
+    card.score ?? card.rating ?? card.grade ?? card.evaluation,
+  );
+  const publishedAt = toIsoDate(
+    card.created_at ??
+      card.createdAt ??
+      card.created ??
+      card.date ??
+      card.published_at ??
+      card.publishedAt,
+  );
 
   return {
-    externalId: `reclameaqui:${id}`,
+    externalId: `reclameaqui:${slug}:${id}`,
     author: maskedAuthor,
-    rating: ratingFromReclameAqui(card.score),
+    rating,
     text,
-    publishedAt: toIsoDate(card.created),
+    publishedAt,
   };
 }
 
-function extractCompanyId(data: unknown): string | undefined {
-  if (!data || typeof data !== "object") return undefined;
-  const root = data as Record<string, unknown>;
-  const nested =
-    root.company && typeof root.company === "object"
-      ? (root.company as Record<string, unknown>)
-      : undefined;
-  const doc = Array.isArray(root.documents)
-    ? (root.documents[0] as Record<string, unknown> | undefined)
-    : undefined;
-  const id =
-    root.id ??
-    root.companyId ??
-    root.idRa ??
-    root.companyid ??
-    nested?.id ??
-    nested?.companyId ??
-    doc?.id;
-  return id == null || String(id).trim() === "" ? undefined : String(id);
-}
-
-async function resolveCompanyId(
+function mapComplaints(
+  payload: unknown,
   slug: string,
-  getJson: JsonGet,
-): Promise<string> {
-  const publicUrl = `https://iosearch.reclameaqui.com.br/raichannels/v1/company/public/${encodeURIComponent(slug)}`;
-  const publicResponse = await getJson(publicUrl);
-  if (publicResponse.status < 400 && publicResponse.data) {
-    const fromPublic = extractCompanyId(publicResponse.data);
-    if (fromPublic) return fromPublic;
-  }
-
-  const fallbackUrl = `https://iosite.reclameaqui.com.br/raichu-io-site-v1/company/shortname/${encodeURIComponent(slug)}`;
-  const response = await getJson(fallbackUrl);
-  if (response.status >= 400 || !response.data || typeof response.data !== "object") {
-    throw new Error(RECLAME_AQUI_UNAVAILABLE);
-  }
-  const id = extractCompanyId(response.data);
-  if (!id) {
-    throw new Error(RECLAME_AQUI_UNAVAILABLE);
-  }
-  return id;
-}
-
-async function collectPages(
-  companyId: string,
   limit: number,
-  getJson: JsonGet,
-  query = "",
-): Promise<RawFeedback[]> {
-  const base =
-    process.env.RECLAMEAQUI_API_BASE?.trim() ||
-    "https://iosearch.reclameaqui.com.br/raichu-io-site-search-v1";
-  const pageSize = Math.min(10, limit);
-  const maxPages = Math.max(1, Math.ceil(limit / pageSize));
+): RawFeedback[] {
+  const cards = extractComplaintCards(payload);
   const collected: RawFeedback[] = [];
   const seen = new Set<string>();
 
-  for (let page = 0; page < maxPages; page += 1) {
-    const url = `${base}/query/companyComplains/${pageSize}/${page}?company=${encodeURIComponent(companyId)}${query}`;
-    const response = await getJson(url);
-    if (response.status >= 400) {
-      throw new Error(RECLAME_AQUI_UNAVAILABLE);
-    }
-
-    const cards = extractCards(response.data);
-    if (cards.length === 0) break;
-
-    for (const card of cards) {
-      const item = toFeedback(card);
-      if (!item || seen.has(item.externalId)) continue;
-      seen.add(item.externalId);
-      collected.push(item);
-      if (collected.length >= limit) return collected;
-    }
+  for (const card of cards) {
+    const item = cardToFeedback(card, slug);
+    if (!item || seen.has(item.externalId)) continue;
+    seen.add(item.externalId);
+    collected.push(item);
+    if (collected.length >= limit) break;
   }
-
   return collected;
+}
+
+/**
+ * Fallback: índices / reputação da empresa pública quando a lista de reclamações falha.
+ */
+function mapCompanyPublicIndices(
+  payload: unknown,
+  slug: string,
+): RawFeedback[] {
+  if (!payload || typeof payload !== "object") return [];
+  const root = payload as Record<string, unknown>;
+  const company =
+    root.company && typeof root.company === "object"
+      ? (root.company as Record<string, unknown>)
+      : root;
+
+  const nestedComplaints = mapComplaints(payload, slug, 50);
+  if (nestedComplaints.length > 0) return nestedComplaints;
+
+  const score =
+    company.finalScore ??
+    company.score ??
+    company.averageScore ??
+    company.rating ??
+    root.finalScore ??
+    root.score;
+  const rating = ratingFromReclameAqui(score);
+  const name = pickString(company.companyName, company.name, root.name) ?? slug;
+  const status = pickString(
+    company.statusDescription,
+    company.status,
+    root.statusDescription,
+  );
+  const solved = pickString(
+    company.solvedPercentual,
+    company.solvedPercentage,
+    root.solvedPercentual,
+  );
+  const count = company.count ?? company.totalComplains ?? root.count;
+
+  const parts = [
+    `Reputação Reclame AQUI — ${name}`,
+    status ? `Status: ${status}` : null,
+    rating != null ? `Nota consolidada: ${rating}/5` : null,
+    solved ? `Resolvidas: ${solved}%` : null,
+    count != null ? `Reclamações indexadas: ${String(count)}` : null,
+  ].filter(Boolean);
+
+  if (parts.length <= 1 && rating == null) return [];
+
+  return [
+    {
+      externalId: `reclameaqui:${slug}:company-index`,
+      author: null,
+      rating,
+      text: parts.join(" · "),
+      publishedAt: new Date().toISOString(),
+    },
+  ];
+}
+
+async function fetchRecentComplaints(
+  slug: string,
+  limit: number,
+): Promise<RawFeedback[]> {
+  const pageSize = Math.min(15, Math.max(1, limit));
+  const url =
+    `https://iosearch.reclameaqui.com.br/raichannels/v1/complains/company/` +
+    `${encodeURIComponent(slug)}?short=true&offset=0&limit=${pageSize}`;
+  const response = await raFetch(url);
+  if (response.status !== 200) return [];
+  return mapComplaints(response.data, slug, limit);
+}
+
+async function fetchCompanyPublicFallback(
+  slug: string,
+): Promise<RawFeedback[]> {
+  const url =
+    `https://iosearch.reclameaqui.com.br/raichannels/v1/company/public/` +
+    `${encodeURIComponent(slug)}`;
+  const response = await raFetch(url);
+  if (response.status !== 200) return [];
+  return mapCompanyPublicIndices(response.data, slug);
 }
 
 export async function fetchReclameAquiReviews(
   urlOrSlug: string,
   limit = 50,
-  getJson: JsonGet = nativeJsonGet,
 ): Promise<RawFeedback[]> {
   try {
-    const slug = parseReclameAquiSlug(urlOrSlug);
-    const companyId = await resolveCompanyId(slug, getJson);
+    const cleanSlug = extractReclameAquiSlug(urlOrSlug);
     const num = normalizeLimit(limit);
-    const latestLimit = Math.max(1, Math.ceil(num * 0.7));
-    const evaluatedLimit = Math.max(1, num - latestLimit);
 
-    const [latest, evaluated] = await Promise.all([
-      collectPages(companyId, latestLimit, getJson),
-      collectPages(companyId, evaluatedLimit, getJson, "&evaluated=true"),
-    ]);
+    // Tentativa 1 — reclamações recentes por slug
+    const recent = await fetchRecentComplaints(cleanSlug, num);
+    if (recent.length > 0) return recent;
 
-    const merged: RawFeedback[] = [];
-    const seen = new Set<string>();
-    for (const item of [...latest, ...evaluated]) {
-      if (seen.has(item.externalId)) continue;
-      seen.add(item.externalId);
-      merged.push(item);
-    }
-    return merged;
+    // Tentativa 2 — detalhes públicos da empresa (índices / nested)
+    const fallback = await fetchCompanyPublicFallback(cleanSlug);
+    if (fallback.length > 0) return fallback;
+
+    throw new Error(RECLAME_AQUI_UNAVAILABLE);
   } catch (cause) {
     if (cause instanceof Error && cause.message === RECLAME_AQUI_UNAVAILABLE) {
+      throw cause;
+    }
+    if (
+      cause instanceof Error &&
+      /informe o link ou o slug/i.test(cause.message)
+    ) {
       throw cause;
     }
     throw new Error(RECLAME_AQUI_UNAVAILABLE);

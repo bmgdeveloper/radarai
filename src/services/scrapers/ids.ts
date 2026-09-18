@@ -90,18 +90,49 @@ export function parseReclameAquiSlug(urlOrSlug: string): string {
     throw new Error("Informe o link ou o slug da empresa no Reclame AQUI.");
   }
 
+  const reservedPath = new Set([
+    "lista-reclamacoes",
+    "reclamacoes",
+    "reputacao",
+    "sobre",
+  ]);
+
   try {
-    const url = new URL(trimmed);
+    const withProtocol = /^https?:\/\//i.test(trimmed)
+      ? trimmed
+      : trimmed.includes("reclameaqui.com.br")
+        ? `https://${trimmed.replace(/^\/+/, "")}`
+        : trimmed;
+    const url = new URL(withProtocol);
     const parts = url.pathname.split("/").filter(Boolean);
     const empresaIdx = parts.findIndex((part) => part.toLowerCase() === "empresa");
-    if (empresaIdx >= 0 && parts[empresaIdx + 1]) {
-      return decodeURIComponent(parts[empresaIdx + 1]);
+    if (empresaIdx >= 0) {
+      for (let i = empresaIdx + 1; i < parts.length; i += 1) {
+        const part = decodeURIComponent(parts[i] ?? "").toLowerCase();
+        if (part && !reservedPath.has(part)) return part;
+      }
     }
   } catch {
-    // valor já é o slug
+    // valor já é o slug (possivelmente com path)
   }
 
-  return trimmed.replace(/^\/+|\/+$/g, "").split("/")[0] ?? trimmed;
+  const cleaned = trimmed
+    .replace(/^https?:\/\/(www\.)?reclameaqui\.com\.br\/?/i, "")
+    .replace(/^\/+|\/+$/g, "");
+  const segments = cleaned.split("/").filter(Boolean);
+  const empresaIdx = segments.findIndex((part) => part.toLowerCase() === "empresa");
+  if (empresaIdx >= 0) {
+    for (let i = empresaIdx + 1; i < segments.length; i += 1) {
+      const part = decodeURIComponent(segments[i] ?? "").toLowerCase();
+      if (part && !reservedPath.has(part)) return part;
+    }
+  }
+
+  const first = decodeURIComponent(segments[0] ?? cleaned).toLowerCase();
+  if (!first || reservedPath.has(first)) {
+    throw new Error("Informe o link ou o slug da empresa no Reclame AQUI.");
+  }
+  return first;
 }
 
 export function parseConsumidorGovInput(urlOrId: string): {
